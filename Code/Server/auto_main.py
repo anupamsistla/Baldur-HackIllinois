@@ -23,7 +23,7 @@ class Rover:
         self.configure_hardware()
 
         self.pid = Incremental_PID(1, 0, 0.0025)    # PID for distance and position control
-        self.color_red = [0, 118, 31, 6, 255, 255]  # HSV range for red ball
+        self.color_red = [0, 100, 50, 6, 255, 255]  # HSV range for red ball
 
     def configure_hardware(self):
         self.servo = Servo()     # Initialize the servo
@@ -57,7 +57,7 @@ class Rover:
 
         self.motor.setMotorModel(speed, speed)
 
-    def turn(self, direction, speed=900):
+    def turn(self, direction, speed=1200):
         speed = speed if direction == "left" else -speed
 
         self.motor.setMotorModel(speed, -speed) 
@@ -201,14 +201,12 @@ class Rover:
                 nparr = np.frombuffer(frame, np.uint8)
                 frame_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 
-                if self.clamp_mode == 0 and self.detect(frame_np):
-                    break
-                    
-            print("Payload picked up, yay")
+                if self.clamp_mode == 0 and self.detect(frame_np):         
+                    print("Payload picked up, yay")
 
-            # self.turn("left", speed=1600)
-            while True:
-                self.led.rainbow()
+                    # self.turn("left", speed=1600)
+                    while True:
+                        self.led.rainbow()
 
 
         except KeyboardInterrupt:

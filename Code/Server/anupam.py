@@ -106,12 +106,13 @@ class Rover:
         complete = True
         while complete:
             distance = self.sonic.get_distance()
-            if distance < 15:
+            self.move("forward")
+            if distance < 10:
                 self.stop()
                 self.let_it_go()
                 print("This is the distance: ", distance)
                 distance = self.sonic.get_distance() 
-                while distance < 15:
+                while distance < 10:
                     print("This is the distance: ", distance)
                     self.move("backward")
                     self.turn("right")
@@ -174,6 +175,7 @@ class Rover:
                     self.turn("right")
                 else:         # Centered and in range: Pick up red ball  
                     self.pick_up()
+                    sleep(2)
                     self.move_outside_grid() 
                 
                     cv2.destroyAllWindows() # Close display after one cycle

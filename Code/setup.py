@@ -1,5 +1,3 @@
-import os
-import sys
 import subprocess
 
 def check_and_install(package):

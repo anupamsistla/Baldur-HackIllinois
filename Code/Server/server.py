@@ -8,7 +8,7 @@ import socket
 import threading
 
 class RoverServer:
-    def __init__(self, rover, port=5000):
+    def __init__(self, rover, port=5005):
         self.rover = rover
 
         self.host = self.get_interface_ip()
@@ -46,10 +46,12 @@ class RoverServer:
                     break
                 print(f"Received command: {data}")
 
-                if data == "run":
+                if data.strip() == "run":
                     self.rover.run()
-                elif data == "pause":
+                elif data.strip() == "pause":
                     self.rover.pause()
+
+                print(self.rover.running)
 
                 response = f"Command '{data}' executed"
                 conn.send(response.encode())

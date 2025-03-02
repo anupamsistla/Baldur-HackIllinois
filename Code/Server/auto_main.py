@@ -17,7 +17,9 @@ from time import sleep
 
 class Rover:
     def __init__(self):
-        self.running = True
+        self.server = None
+
+        self.running = False
         self.clamp_mode = 0
 
         self.configure_hardware()
@@ -51,6 +53,13 @@ class Rover:
         self.camera.close()    
 
         print("Rover killed.")  
+
+    def run(self):
+        self.running = True
+
+    def pause(self):
+        self.stop()
+        self.running = False
 
     def move(self, direction, speed=900):
         speed = speed if direction == "forward" else -speed
@@ -103,6 +112,26 @@ class Rover:
 
             self.clamp_mode = 0
 
+    def move_outside_grid(self):
+        while True:
+            self.move("forward")
+            sleep(0.2)
+            
+            if self.sonic.get_distance() < 35:
+                self.stop()
+                self.let_it_go()
+
+                self.move("backward")
+                sleep(0.5)
+                self.turn("right", speed=1500)
+                sleep(1.5)
+
+                self.led.Blink((0, 255, 0))
+                self.move("forward")
+                sleep(2)
+
+                break
+
     def detect(self, video):
         try:
             # Preprocessing
@@ -149,7 +178,7 @@ class Rover:
 
             print(f"This is the distance and x values: ({D}, {x})")
 
-            if d >= 9 and d <= 13: # In range (approximately 8-12 cm)
+            if d >= 11 and d <= 14: # In range (approximately 8-12 cm)
                 self.stop()
 
                 if x < 85:    # Ball to the left
@@ -158,14 +187,17 @@ class Rover:
                     self.turn("right")
                 else:         # Centered and in range: Pick up red ball  
                     self.pick_up() 
+                    print("Payload picked up, yay")
+                    self.led.rainbow(wait_ms=5)
+
+                    self.move_outside_grid() 
                 
                     cv2.destroyAllWindows() # Close display after one cycle
-
-                    return True
-            elif d < 9:           # Too close (negative PID indicates error below target)
+            
+            elif d < 11:           # Too close (negative PID indicates error below target)
                 self.move("backward")  
             elif d < 53:          # Kinda close (positive PID indicates error above target)
-                self.move("forward", speed=750) 
+                self.move("forward", speed=800) 
             else:                 # Too far (positive PID indicates error above target)
                 self.move("forward")
 
@@ -179,35 +211,25 @@ class Rover:
             print(f"Error in block_detect: {e}")
             self.stop()  # Stop on error
 
-    def run(self):
-        self.running = True
-
-    def pause(self):
-        self.running = False
-
     def auto_mode(self):
         print("Running in autonomous mode...")
         self.led.Blink((0, 255, 0))
 
         try:
-            while self.running:
-                # Capture frame using the Camera class
-                frame = self.camera.get_frame()
-                
-                if frame is None:
-                    print("Failed to capture frame. Retrying...")
-                    continue
+            while True:
+                if self.running:
+                    # Capture frame using the Camera class
+                    frame = self.camera.get_frame()
+                    
+                    if frame is None:
+                        print("Failed to capture frame. Retrying...")
+                        continue
 
-                nparr = np.frombuffer(frame, np.uint8)
-                frame_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                
-                if self.clamp_mode == 0 and self.detect(frame_np):         
-                    print("Payload picked up, yay")
-
-                    # self.turn("left", speed=1600)
-                    while True:
-                        self.led.rainbow()
-
+                    nparr = np.frombuffer(frame, np.uint8)
+                    frame_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    
+                    if self.clamp_mode == 0:
+                        self.detect(frame_np)
 
         except KeyboardInterrupt:
             print("Program interrupted")
@@ -223,6 +245,7 @@ if __name__ == '__main__':
         server_thread.start()
         print("Socket server started in the background")
 
+        rover.server = server
         rover.camera.start_stream() # Start the video stream (using JpegEncoder for streaming)
 
         rover_thread = threading.Thread(target=rover.auto_mode)

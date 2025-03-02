@@ -28,3 +28,6 @@ This project aims to provide an autonomous, AI-powered solution to detect and re
 - Kaito Sekiya: Hardware/Kit
 - Nathan Trinh: Software/App
 - Hanel Vujic: Software/App
+
+## Note
+Initially, the project was developed within two separate repositories since the rover code was hosted on the rover itself. See the commit history for the app [here](https://github.com/KaiFan26/Baldur_App-HackIllinois-).

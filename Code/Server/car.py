@@ -129,7 +129,7 @@ class Car:
                 for i in range(140, 90, -1):
                     self.servo.setServoAngle('1', i)
                     time.sleep(0.01)
-                for i in range(90, 130, 1):
+                for i in range(90, 150, 1):
                     self.servo.setServoAngle('0', i)
                     time.sleep(0.01)  
                 for i in range(90, 140, 1):
@@ -151,7 +151,7 @@ class Car:
             for i in range(140, 90, -1):
                 self.servo.setServoAngle('1', i)
                 time.sleep(0.01)
-            for i in range(130, 90, -1):
+            for i in range(150, 90, -1):
                 self.servo.setServoAngle('0', i)
                 time.sleep(0.01)
             for i in range(90, 140, 1):
@@ -238,8 +238,10 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Parameter error: Please assign the device")       # Print an error message if no device is specified
         exit()                                                   # Exit the program
-    if sys.argv[1] == 'Sonic' or sys.argv[1] == 'sonnic':
-        test_car_sonic()                                        # Run the ultrasonic test
+    if sys.argv[1] == 'Sonic' or sys.argv[1] == 'sonic':
+        test_car_sonic()                                         # Run the ultrasonic test
     elif sys.argv[1] == 'Infrared' or sys.argv[1] == 'infrared':
-        test_car_infrared()                                          # Run the infrared test
+        test_car_infrared()                                      # Run the infrared test
+    elif sys.argv[1] == 'Clamp' or sys.argv[1] == 'clamp':
+        test_car_clamp()                                         # Run the clamp test
  

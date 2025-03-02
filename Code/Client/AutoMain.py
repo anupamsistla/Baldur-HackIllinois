@@ -325,7 +325,7 @@ class mywindow(QMainWindow,Ui_Client):
             QMouseEvent.accept()
 
     def mouseReleaseEvent(self, QMouseEvent):
-        self.m_drag = False
+        self.m_drag = False 
 
     def keyPressEvent(self, event):
         if(event.key() == Qt.Key_Up):
@@ -716,82 +716,96 @@ class mywindow(QMainWindow,Ui_Client):
         os._exit(0)
 
     def recvmassage(self):
-        self.TCP.socket1_connect(self.h)
-        restCmd=""
-        while True:
-            Alldata=restCmd+str(self.TCP.recvData())
+            self.TCP.socket1_connect(self.h)
             restCmd=""
-            print (Alldata)
-            if Alldata=="":
-                break
-            else:
-                cmdArray=Alldata.split("\n")
-                if(cmdArray[-1] != ""):
-                    restCmd=cmdArray[-1]
-                    cmdArray=cmdArray[:-1]
-            for oneCmd in cmdArray:
-                Massage=oneCmd.split("#")
-                if cmd.CMD_SONIC in Massage:
-                    self.Ultrasonic.setText('Obstruction:%s cm'%Massage[1])
-                elif cmd.CMD_ACTION in Massage:
-                    if Massage[1]=='10':
-                        self.checkBox_Pinch_Object.setChecked(False)
-                    elif Massage[1] == '20':
-                        self.checkBox_Drop_Object.setChecked(False)
+            while True:
+                Alldata=restCmd+str(self.TCP.recvData())
+                restCmd=""
+                print (Alldata)
+                if Alldata=="":
+                    break
+                else:
+                    cmdArray=Alldata.split("\n")
+                    if(cmdArray[-1] != ""):
+                        restCmd=cmdArray[-1]
+                        cmdArray=cmdArray[:-1]
+                for oneCmd in cmdArray:
+                    Massage=oneCmd.split("#")
+                    if cmd.CMD_SONIC in Massage:
+                        self.Ultrasonic.setText('Obstruction:%s cm'%Massage[1])
+                    elif cmd.CMD_ACTION in Massage:
+                        if Massage[1]=='10':
+                            self.checkBox_Pinch_Object.setChecked(False)
+                        elif Massage[1] == '20':
+                            self.checkBox_Drop_Object.setChecked(False)
 
-    def block_detect(self,video):
+    def block_detect(self, video):
         try:
-            cv2.cvtColor(video, cv2.COLOR_RGB2GRAY)
             gs_frame = cv2.GaussianBlur(video, (5, 5), 0)
             gs_frame = cv2.cvtColor(gs_frame, cv2.COLOR_BGR2HSV)
-            gs_frame = cv2.erode(gs_frame, (5, 5), iterations=1)
-            gs_frame = cv2.dilate(gs_frame, (2, 2), iterations=1)
+            gs_frame = cv2.erode(gs_frame, np.ones((5, 5), np.uint8), iterations=1)
+            gs_frame = cv2.dilate(gs_frame, np.ones((2, 2), np.uint8), iterations=1)
 
-            if self.color_select_button == 1:
-                inRange_hsv = cv2.inRange(gs_frame, (self.color_red[0], self.color_red[1], self.color_red[2]),(self.color_red[3], self.color_red[4], self.color_red[5]))
-            elif self.color_select_button == 2:
-                inRange_hsv = cv2.inRange(gs_frame, (self.color_green[0], self.color_green[1], self.color_green[2]),(self.color_green[3], self.color_green[4], self.color_green[5]))
-            elif self.color_select_button == 3:
-                inRange_hsv = cv2.inRange(gs_frame, (self.color_blue[0], self.color_blue[1], self.color_blue[2]),(self.color_blue[3], self.color_blue[4], self.color_blue[5]))
-            cv2.imshow("Image", inRange_hsv)
+            if self.color_select_button == 1:  # Red rock
+                inRange_hsv = cv2.inRange(gs_frame, tuple(self.color_red[:3]), tuple(self.color_red[3:]))
+            else:
+                self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
+                return
+
+            # cv2.imshow("Image", inRange_hsv)
             cnts = cv2.findContours(inRange_hsv.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+            if not cnts:
+                self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
+                return
+
             c = max(cnts, key=cv2.contourArea)
-            rect = cv2.minAreaRect(c)
+            ((x, y), radius) = cv2.minEnclosingCircle(c)
+            M = cv2.moments(c)
             center = None
-            radius = 0
-            X, Y = rect[0]
-            if len(cnts) > 0:
-                c = max(cnts, key=cv2.contourArea)
-                ((x, y), radius) = cv2.minEnclosingCircle(c)
-                M = cv2.moments(c)
-                if M["m00"] > 0:
-                    center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-                    if radius < 10:
-                        center = None
-            if center != None:
-                D = round(1660 / (2 * radius))  # CM
+            if M["m00"] > 0:
+                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
+                if radius < 10:
+                    center = None
+
+            if center:
+                D = round(1660 / (2 * radius))
                 x = self.pid.PID_compute(center[0])
                 d = self.pid.PID_compute(D)
                 if radius > 15:
-                    cv2.circle(video, (int(X), int(Y)), 3, (255, 0, 0),5)
-                    cv2.circle(video, (int(X), int(Y)), int(radius), (0, 255, 0), 2)
-                    if d < 6:
+                    cv2.circle(video, center, 3, (255, 0, 0), 5)
+                    cv2.circle(video, center, int(radius), (0, 255, 0), 2)
+                    if d < 8:
                         self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(-1200) + '#' + str(-1200) + self.endChar)
-                    elif d > 8:
+                    elif d > 20:
                         self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(1200) + '#' + str(1200) + self.endChar)
                     else:
                         if x < 85:
-                            self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(1350) + '#' + str(-1350) + self.endChar)
-                        elif x > 315:
                             self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(-1350) + '#' + str(1350) + self.endChar)
+                        elif x > 315:
+                            self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(1350) + '#' + str(-1350) + self.endChar)
                         else:
+                            # Red rock is centered and in range: Pick it up
                             self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
+                            self.servo2 = 90  # Lower gripper
+                            self.TCP.sendData(cmd.CMD_SERVO + '#' + '1' + '#' + str(self.servo2) + self.endChar)
+                            time.sleep(0.5)
+                            self.TCP.sendData(cmd.CMD_ACTION + '#' + '1' + self.endChar)  # Pinch
+                            time.sleep(1)
+                            self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(1200) + '#' + str(1200) + self.endChar)  # Move
+                            time.sleep(2)
+                            self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
+                            self.TCP.sendData(cmd.CMD_ACTION + '#' + '2' + self.endChar)  # Drop
+                            self.servo2 = 140  # Reset gripper height
+                            self.TCP.sendData(cmd.CMD_SERVO + '#' + '1' + '#' + str(self.servo2) + self.endChar)
+                            self.color_select_button = 0  # Stop after one rock
+                            self.Button_Color_Target_Red.setStyleSheet("color: rgb(220, 220, 220);")
+                            cv2.destroyAllWindows()
                 else:
                     self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
             else:
                 self.TCP.sendData(cmd.CMD_MOTOR + '#' + str(0) + '#' + str(0) + self.endChar)
-        except:
-            pass
+        except Exception as e:
+            print(f"Error: {e}")
 
     def time(self):
         try:

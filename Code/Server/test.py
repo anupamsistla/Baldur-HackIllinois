@@ -106,11 +106,11 @@ def test_Servo():
     servo = Servo()                    # Initialize the Servo instance
     try:
         while True:
-            for i in range(90, 150, 1):
-                servo.setServoAngle('0', i)  # Set servo 0 to angle i
-                time.sleep(0.01)           # Wait for 0.01 seconds
             for i in range(140, 90, -1):
                 servo.setServoAngle('1', i)  # Set servo 1 to angle i
+                time.sleep(0.01)           # Wait for 0.01 seconds
+            for i in range(90, 150, 1):
+                servo.setServoAngle('0', i)  # Set servo 0 to angle i
                 time.sleep(0.01)           # Wait for 0.01 seconds
             for i in range(90, 140, 1):
                 servo.setServoAngle('1', i)  # Set servo 1 to angle i
